@@ -71,11 +71,11 @@ If you are not familiar with the R language, please review the [lecture sheets](
 ||||||||
 |**September 19**|||||||
 |      8.30 - 9.15         |      Katrien      | Module C: statistical and machine learning methods for mortality data | C.1           | Statistical and machine learning methods for portfolio data      |  | [Gschössl et al., 2011](https://link.springer.com/article/10.1007/s13385-011-0028-y), [JRSS A paper](https://academic.oup.com/jrsssa/article/184/2/548/7056401?searchresult=1), [IFoA and LLMA, 2014](https://openaccess.city.ac.uk/id/eprint/16835/1/ifoa-llma-longevity-basis-risk-report.pdf), and [BAJ, 2015](https://www.cambridge.org/core/journals/british-actuarial-journal/article/methodology-for-assessing-basis-risk-abstract-of-the-london-discussion/3E221713A2348CB4C70A72FCD5438E28)  |
-|  9.30 - 10.15     |      Katrien        |  | C.2                  | Statistical and machine learning methods for fine-grained mortality data |  |                                                                                      | [Robben, Antonio, and Kleinow, 2024](https://arxiv.org/pdf/2405.18020) |
+|  9.30 - 10.15     |      Katrien        |  | C.2                  | Statistical and machine learning methods for fine-grained mortality data |  |    [Robben, Antonio, and Kleinow, 2024](https://arxiv.org/pdf/2405.18020) |
 | 10.30 - 11.15 | Katrien | | (cont'd) | | |
 |      your own pace       |           | | Demo 3               | Fine-grained mortality data                                                                                                                  |     sheets ([html](https://jensrobben.github.io/Lausanne-summer-school/sheets/Tutorial-3.html), [pdf](https://jensrobben.github.io/Lausanne-summer-school/sheets/Tutorial-3.pdf))  |        [R script](https://gitfront.io/r/jensrobben/mUZ8CcDz5x1L/Lausanne-summer-school/raw/scripts/Tutorial-3.R)     [Solution](https://gitfront.io/r/jensrobben/mUZ8CcDz5x1L/Lausanne-summer-school/raw/scripts/Tutorial-3-solutions.R)                                                                              |      
 |   11.30 - 12.15       |   Michel     | Module D: impact and risk mitigation    | D.1 | Sensitivities and redistribution of risk               |                                               |                                                                                                                                           |
-| 12.30 - 13.15 | Michel | | D.2 | Pricing longevity risk | 
+| 12.30 - 13.15 | Michel | | D.2 | Pricing longevity risk |  | [Delong, 2009](https://lukaszdelong.pl/wp-content/uploads/2019/05/indifference-pricing.pdf)
 | 13.30 - 14.15 | Michel | | D.3 | Heterogeneity in Mortality Models + Wrap-up | 
 |||||||||
 
