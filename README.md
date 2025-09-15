@@ -76,7 +76,7 @@ If you are not familiar with the R language, please review the [lecture sheets](
 | your own pace  |           | | Demo 3               | Fine-grained mortality data                                              |     sheets ([html](https://jensrobben.github.io/Lausanne-summer-school/sheets/Tutorial-3.html), [pdf](https://jensrobben.github.io/Lausanne-summer-school/sheets/Tutorial-3.pdf))  |        [R script](https://gitfront.io/r/jensrobben/mUZ8CcDz5x1L/Lausanne-summer-school/raw/scripts/Tutorial-3.R)     [Solution](https://gitfront.io/r/jensrobben/mUZ8CcDz5x1L/Lausanne-summer-school/raw/scripts/Tutorial-3-solutions.R)                                                                              |      
 | 11.15 - 12.00  |   Michel     | Module D: impact and risk mitigation    | D.1 | Sensitivities and redistribution of risk   |   [sheets](https://katrienantonio.github.io/warsaw-2025/sheets/Module_D_1.pdf)  |    [Blake and Cairns, 2025](https://link.springer.com/article/10.1007/s13385-025-00421-y)                                                                                                                             |
 | 12.45 - 13.30  | Michel | | D.2 | Pricing longevity risk | [sheets](https://katrienantonio.github.io/warsaw-2025/sheets/Module_D_2.pdf)  | [Delong, 2009](https://lukaszdelong.pl/wp-content/uploads/2019/05/indifference-pricing.pdf)
-| 13.30 - 14.15  | Michel | | D.3 | Heterogeneity in Mortality Models + Wrap-up | 
+| 13.30 - 14.15  | Michel | | D.3 | Heterogeneity in Mortality Models + Wrap-up | [sheets](https://katrienantonio.github.io/warsaw-2025/sheets/Module_D_3.pdf) | [Vaupel & Missov, 2014](https://www.demographic-research.org/articles/volume/31/22)
 |||||||||
 
 ## Instructors
