@@ -1,0 +1,1222 @@
+---
+output:
+  xaringan::moon_reader:
+    css: 
+      - css/default.css
+      - css/metropolis.css
+      - css/metropolis-fonts.css
+      - css/my-css.css
+    lib_dir: libs
+    nature:
+      ratio: '16:9'
+      highlightLanguage: R
+      highlightLines: true
+      countIncrementalSlides: no
+      highlightSpans: true
+  html_document:
+    df_print: paged
+  pdf_document:  
+graphics: yes
+editor_options:
+  chunk_output_type: console
+header-includes:
+- \usepackage{tikz}
+- \usetikzlibrary{shapes.geometric,shapes, snakes, arrows}
+- \usepackage{amsfonts}
+- \usepackage{amsmath}
+- \usepackage{amssymb}
+- \usepackage{color}
+- \usepackage{graphicx}
+- \usepackage{titlesec}
+- \titlespacing{\title}{0pt}{\parskip}{-\parskip}
+---
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+library(knitr)
+library(kableExtra)
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+options(knitr.table.format = "html")
+# options(knitr.table.format = "html")
+library(tidyverse)
+library(dplyr)
+library(fontawesome) # from github: https://github.com/rstudio/fontawesome
+library(DiagrammeR)
+library(emo) # from github: https://github.com/hadley/emo
+library(gt) # from github: https://github.com/rstudio/gt
+#library(countdown) # from github: https://github.com/gadenbuie/countdown 
+library(gridExtra)
+library(demography)
+library(StMoMo)
+```
+
+```{r setup_greenwell, include=FALSE}
+# Set global R options
+options(htmltools.dir.version = FALSE, servr.daemon = TRUE, 
+        crayon.enabled = TRUE)
+
+# Set global knitr chunk options
+knitr::opts_chunk$set(
+  dev = "svg",
+  fig.align = "center",
+  cache = TRUE,
+  error = FALSE,
+  message = FALSE, 
+  warning = FALSE, 
+  collapse = TRUE 
+)
+
+# colors - I copied most of these from # https://github.com/edrubin/EC524W20
+dark2 <- RColorBrewer::brewer.pal(8, name = "Dark2")
+RCLRbg     = "#106EB6"
+red_pink   = "#e64173"
+turquoise  = "#20B2AA"
+orange     = "#FFA500"
+red        = "#fb6107"
+blue       = "#3b3b9a"
+green      = "#8bb174"
+grey_light = "grey70"
+grey_mid   = "grey50"
+grey_dark  = "grey20"
+purple     = "#6A5ACD"
+slate      = "#314f4f"
+```
+
+class: center, middle, inverse, title-slide, clear
+count: false
+
+# Modelling and quantifying mortality and longevity risk 
+## Tutorial 1 (in brief)
+
+<html>
+<div style="float:left"></div>
+<hr align='center' color='#106EB6' size=1px width=97%>
+</html>
+
+### Katrien Antonio, Michel Vellekoop, with input by Jens Robben
+### <a href="https://github.com/katrienantonio/warsaw-2025">School of Actuarial Science, Warsaw</a> | September 18-19, 2025
+###  <a> </a>
+
+---
+
+class: inverse, center, middle
+name: goals 
+
+
+# Goals of tutorial session 1
+
+<html><div style='float:left'></div><hr color='#FAFAFA' size=1px width=796px></html>
+
+---
+
+# Goals of tutorial session 1
+
+.pull-left[
+
+In this tutorial session you will learn to:  
+
+* download and visualize mortality data sets and life tables obtained from the Human Mortality Database, see [HMD](https://mortality.org/)
+
+* perform some basic calculations with period life tables
+
+* calibrate (selected) single population mortality models, using the Poisson distributional assumption for death counts
+
+* perform some checks to inspect the in-sample fit of the calibrated model. 
+
+
+]
+
+.pull-right[
+Outline of the tutorial: 
+
+* [Prologue](#prologue)
+
+* [Life table calculations and visualizations](#lifetable)
+
+* [Download and import mortality data](#data)
+
+* [Fit single population mortality models by maximising a Poisson likelihood](#POI)
+
+* [Model selection and goodness-of-fit](#modelfit)
+
+
+]
+---
+
+class: inverse, center, middle
+name: lifetable
+
+
+# Life table calculations and visualizations
+
+<html><div style='float:left'></div><hr color='#FAFAFA' size=1px width=796px></html>
+
+---
+
+# Import a life table stored as .txt file 
+
+.pull-left[
+We downloaded (on 17 September 2025) life tables from the [HMD](https://www.mortality.org) and stored it as .txt file on the GitHub repo. Now you can import it in R:
+
+```{r}
+POL_female <- read.table(
+  file = "../data/hmd/POL_female_life_table_1x1.txt", 
+  skip = 2, header = TRUE)
+POL_male   <- read.table(
+  file = "../data/hmd/POL_male_life_table_1x1.txt", 
+  skip = 2, header = TRUE)
+```
+
+```{r echo=FALSE,eval=FALSE}
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path)) 
+POL_female <- read.table(file = "../data/hmd/POL_female_life_table_1x1.txt", skip = 2, header = TRUE)
+POL_male <- read.table(file = "../data/hmd/POL_male_life_table_1x1.txt", skip = 2, header = TRUE)
+```
+
+We convert the age variable into an integer variable:
+
+```{r}
+POL_male$Age   <- parse_number(POL_male$Age)   %>% 
+  as.integer()
+POL_female$Age <- parse_number(POL_female$Age) %>% 
+  as.integer()
+```
+
+Mind the use of `parse_number()` to handle the entry '110+' in the `Age` column of the original object. 
+
+
+]
+
+.pull-right[
+
+We extract the 2022 data (by means of example) using the function `filter` from the {dplyr} package:
+
+```{r}
+POL_male_2022   <- POL_male   %>% 
+  dplyr::filter(Year == 2022)
+POL_female_2022 <- POL_female %>% 
+  dplyr::filter(Year == 2022)
+```
+
+We display the structure of the R object `POL_female_2022` using `str(.)`
+
+```{r}
+str(POL_female_2022)
+```
+
+]
+
+---
+class: clear 
+
+Let's take a closer look at the period life table for males in Poland in the year 2022:
+
+```{r eval=FALSE}
+head(POL_male_2022)
+```
+
+```{r echo=FALSE}
+head(POL_male_2022) %>%
+  kable("html") %>%
+  kable_styling(font_size = 16)
+```
+
+.pull-left[
+`mx`: death rate at age $x$, calculated as observed deaths divided by observed exposures at age $x$.
+
+`qx`: mortality rate, i.e., the probability that an $x$-year old dies within a year.
+
+`lx`: number of survivors at age $x$ in the life table population.
+]
+
+.pull-right[
+`dx`: number of deaths at age $x$ in the life table population.
+
+`Tx`: remaining person-years for all individuals of age $x$.
+
+`ex`: period life expectancy at age $x$.
+]
+
+---
+
+# Visualize a period life table
+
+.pull-left[
+
+We start with visualizing the $q_{x,t}$ for M/F data in Poland, year 2022.
+
+Using `ggplot` instructions:
+
+```{r eval = FALSE}
+g_male <- 
+  ggplot(POL_male_2022, aes(Age, log(qx))) + 
+  geom_point(col = RCLRbg) + 
+  geom_line(col = RCLRbg) + 
+  theme_bw(base_size = 15) +
+  ggtitle("Poland - males, 2022") + 
+  labs(y = bquote(ln(q[x])))
+
+g_fem <- 
+  ggplot(POL_female_2022, aes(Age, log(qx))) + 
+  geom_point(col = RCLRbg) + 
+  geom_line(col = RCLRbg) + 
+  theme_bw(base_size = 15) +
+  ggtitle("Poland - females, 2022") + 
+  labs(y = bquote(ln(q[x])))
+```
+
+
+]
+
+.pull-right[
+
+```{r echo = FALSE}
+g_male <- ggplot(POL_male_2022, aes(Age, log(qx))) + 
+          geom_point(col = RCLRbg) + 
+          geom_line(col = RCLRbg) + 
+          theme_bw(base_size = 15) + 
+          ggtitle("Poland - males, 2022") + 
+          labs(y = bquote(ln(q[x])))
+g_male
+```
+
+]
+
+---
+
+# Visualize a period life table 
+
+.pull-left[
+
+We start with visualizing the $q_{x,t}$ for M/F data in Poland, year 2022.
+
+Using `ggplot` instructions:
+
+```{r eval = FALSE}
+g_male <- 
+  ggplot(POL_male_2022, aes(Age, log(qx))) + 
+  geom_point(col = RCLRbg) + 
+  geom_line(col = RCLRbg) + 
+  theme_bw(base_size = 15) +
+  ggtitle("Poland - males, 2022") + 
+  labs(y = bquote(ln(q[x])))
+
+g_fem <- 
+  ggplot(POL_female_2022, aes(Age, log(qx))) + 
+  geom_point(col = RCLRbg) + 
+  geom_line(col = RCLRbg) + 
+  theme_bw(base_size = 15) +
+  ggtitle("Poland - females, 2022") + 
+  labs(y = bquote(ln(q[x])))
+```
+
+
+]
+
+.pull-right[
+
+```{r echo = FALSE}
+g_fem <- ggplot(POL_female_2022, aes(Age, log(qx))) + 
+            geom_point(col = RCLRbg) + 
+            geom_line(col = RCLRbg) + 
+            theme_bw(base_size = 15) +
+            ggtitle("Poland - females, 2022") + 
+            labs(y = bquote(ln(q[x])))
+g_fem
+```
+
+]
+
+---
+
+# Visualize the mortality rates over time
+
+.pull-left[
+
+We visualize the $q_{x,t}$ for male and female data in Poland, ages 0-90 and (selected) years 1960, 1970, 1980, 1990, 2000, 2022.
+
+Using `ggplot` instructions:
+
+```{r eval=FALSE}
+years <- c(1960, 1970, 1980, 1990, 2000, 2022)
+dfM   <- POL_male %>% 
+  dplyr::filter(Year %in% years,
+                Age <= 90)
+
+ggplot(dfM, aes(x = Age, y = log(qx), 
+               group = Year, colour = factor(Year))) + 
+  geom_line(linewidth = 1.1)  + 
+  ggtitle('Polish male mortality rates') + 
+  xlab('Age (x)') + ylab(bquote(ln(q[x]))) +
+  scale_color_manual(values = c(red_pink, turquoise,
+                                orange, blue, green,
+                                purple), name = 'Year') + 
+  scale_x_continuous(breaks = seq(0, 90, 10)) + 
+  theme_bw(base_size = 15)
+```
+]
+
+.pull-right[
+
+```{r echo=FALSE}
+years <- c(1960, 1970, 1980, 1990, 2000, 2022)
+dfM   <- POL_male %>% 
+  dplyr::filter(Year %in% years,
+                Age <= 90)
+
+ggplot(dfM, aes(x = Age, y = log(qx), 
+               group = Year, colour = factor(Year))) + 
+  geom_line(linewidth = 1.1)  + 
+  ggtitle('Polish male mortality rates') + 
+  xlab('Age (x)') + ylab(bquote(ln(q[x]))) +
+  scale_color_manual(values = c(red_pink, turquoise,
+                                orange, blue, green,
+                                purple), name = 'Year') + 
+  scale_x_continuous(breaks = seq(0,90,10)) + 
+  theme_bw(base_size = 15)
+```
+
+]
+
+---
+
+
+# Visualize the mortality rates over time
+
+.pull-left[
+
+We visualize the $q_{x,t}$ for male and female data in Poland, ages 0-90 and (selected) years 1960, 1970, 1980, 1990, 2000, 2022.
+
+Using `ggplot` instructions:
+
+```{r eval=FALSE}
+years <- c(1960, 1970, 1980, 1990, 2000, 2022)
+dfF   <- POL_female %>% 
+  dplyr::filter(Year %in% years,
+                Age <= 90)
+
+ggplot(dfF, aes(x = Age, y = log(qx), 
+               group = Year, colour = factor(Year))) + 
+  geom_line(linewidth = 1.1)  + 
+  ggtitle('Polish female mortality rates') + 
+  xlab('Age (x)') + ylab(bquote(ln(q[x]))) +
+  scale_color_manual(values = c(red_pink, turquoise,
+                                orange, blue, green,
+                                purple), name = 'Year') + 
+  scale_x_continuous(breaks = seq(0, 90, 10)) + 
+  theme_bw(base_size = 15)
+```
+]
+
+.pull-right[
+
+```{r echo=FALSE}
+years <- c(1960, 1970, 1980, 1990, 2000, 2022)
+dfF   <- POL_female %>% 
+  dplyr::filter(Year %in% years,
+                Age <= 90)
+
+ggplot(dfF, aes(x = Age, y = log(qx), 
+               group = Year, colour = factor(Year))) + 
+  geom_line(linewidth = 1.1)  + 
+  ggtitle('Polish female mortality rates') + 
+  xlab('Age (x)') + ylab(bquote(ln(q[x]))) +
+  scale_color_manual(values = c(red_pink, turquoise,
+                                orange, blue, green,
+                                purple), name = 'Year') + 
+  scale_x_continuous(breaks = seq(0,90,10)) + 
+  theme_bw(base_size = 15)
+```
+
+]
+
+---
+
+# Visualize the survival curve 
+
+.pull-left[
+
+We put focus on $S_{0,t}(.)$, the survival curve for a newborn, born in period (or year) $t$. 
+
+We calculate the survival probabilities $S_{0,t}(x)$ for a Polish male newborn, for selected time period $t$. Hereby we let $x$ run from 0 to 100. 
+
+```{r eval=FALSE}
+{{xmax  <- 100}}
+{{xmin  <- 0}}
+{{years <- c(1960, 1970, 1980, 1990, 2000, 2022)}}
+surv_rate <- matrix(0, xmax-xmin+1, length(years))
+surv_rate[1,] <- 1
+
+for(t in 1:length(years)){
+  for(x in 1:(xmax-xmin)){
+    df.t <- POL_male %>% 
+      dplyr::filter(Year == years[t])
+    px <- 1 - df.t[x,'qx']
+    surv_rate[x+1,t] <- surv_rate[x,t]*px
+  }
+}
+```
+
+]
+
+.pull-right[
+We consider a minimum age $x$ of 0, a maximum age of 100, and the years of interest.
+]
+
+---
+
+
+# Visualize the survival curve 
+
+.pull-left[
+We put focus on $S_{0,t}(.)$, the survival curve for a newborn, born in period (or year) $t$. 
+
+We calculate the survival probabilities $S_{0,t}(x)$ for a Polish male newborn, for selected time period $t$. Hereby we let $x$ run from 0 to 100. 
+
+```{r eval=FALSE}
+xmax  <- 100
+xmin  <- 0
+years <- c(1960, 1970, 1980, 1990, 2000, 2022)
+{{surv_rate <- matrix(0, xmax-xmin+1, length(years))}}
+surv_rate[1,] <- 1
+
+for(t in 1:length(years)){
+  for(x in 1:(xmax-xmin)){
+    df.t <- POL_male %>% 
+      dplyr::filter(Year == years[t])
+    px <- 1 - df.t[x,'qx']
+    surv_rate[x+1,t] <- surv_rate[x,t]*px
+  }
+}
+```
+
+]
+
+.pull-right[
+We consider a minimum age $x$ of 0, a maximum age of 100, and the years of interest.
+
+We create an empty matrix `surv_rate` of dimension $101 \times 6$ to store the calculated survival probabilities in the years 1960, 1970, 1980, 1990, 2000, 2022.
+]
+
+---
+
+
+# Visualize the survival curve 
+
+.pull-left[
+We put focus on $S_{0,t}(.)$, the survival curve for a newborn, born in period (or year) $t$. 
+
+We calculate the survival probabilities $S_{0,t}(x)$ for a Polish male newborn, for selected time period $t$. Hereby we let $x$ run from 0 to 100.
+
+```{r eval=FALSE}
+xmax  <- 100
+xmin  <- 0
+years <- c(1960, 1970, 1980, 1990, 2000, 2022)
+surv_rate <- matrix(0, xmax-xmin+1, length(years))
+{{surv_rate[1,] <- 1}}
+
+for(t in 1:length(years)){
+  for(x in 1:(xmax-xmin)){
+    df.t <- POL_male %>% 
+      dplyr::filter(Year == years[t])
+    px <- 1 - df.t[x,'qx']
+    surv_rate[x+1,t] <- surv_rate[x,t]*px
+  }
+}
+```
+
+]
+
+.pull-right[
+We consider a minimum age $x$ of 0, a maximum age of 100, and the years of interest.
+
+We create an empty matrix `surv_rate` of dimension $101 \times 6$ to store the calculated survival probabilities in the years 1960, 1970, 1980, 1990, 2000, 2022.
+
+The probability of surviving zero years equals one, i.e. $S_{0,t}(0)=1$.
+]
+
+---
+
+
+
+# Visualize the survival curve 
+
+.pull-left[
+We put focus on $S_{0,t}(.)$, the survival curve for a newborn, born in period (or year) $t$. 
+
+We calculate the survival probabilities $S_{0,t}(x)$ for a Polish male newborn, for selected time period $t$. Hereby we let $x$ run from 0 to 100.
+
+```{r eval=FALSE}
+xmax  <- 100
+xmin  <- 0
+years <- c(1960, 1970, 1980, 1990, 2000, 2022)
+surv_rate <- matrix(0, xmax-xmin+1, length(years))
+surv_rate[1,] <- 1
+
+*for(t in 1:length(years)){
+* for(x in 1:(xmax-xmin)){
+*   df.t <- POL_male %>% 
+*     dplyr::filter(Year == years[t])
+*   px <- 1 - df.t[x,'qx']
+*   surv_rate[x+1,t] <- surv_rate[x,t]*px
+* }
+*}
+```
+
+]
+
+.pull-right[
+We consider a minimum age $x$ of 0, a maximum age of 100, and the years of interest.
+
+We create an empty matrix `surv_rate` of dimension $101\times 6$ to store the calculated survival probabilities in the years 1960, 1970, 1980, 1990, 2000, 2022.
+
+The probability of surviving zero years equals one, i.e. $S_{0,t}(0)=1$.
+
+For every year $t$ under consideration, the one-year survival probability of $(x)$ in year $t$ is $S_{x,t}(1) = p_{x,t} = 1-q_{x,t}$. We evaluate the survival probabilities recursively, as follows:
+
+$$S_{0,t}(x+1) =  S_{0,t}(x) \cdot p_{x,t}.$$
+Hereby, we follow the period approach (and keep $t$ fixed)!
+]
+
+---
+class:clear
+
+.pull-left[
+We plot these survival probabilities calculated for a male Polish newborn in the selected years.
+
+```{r eval=FALSE}
+df <- data.frame('Age' = rep(0:100, times = length(years)),
+                 'Year' = rep(years, each = length(0:100)),
+                 'Surv' = as.numeric(surv_rate))
+
+ggplot(df, aes(x = Age, y = Surv, 
+               group = Year, colour = as.factor(Year))) + 
+  geom_line(linewidth = 1.1)  + 
+  ggtitle('Polish male survival curve') + 
+  xlab('Age (x)') + ylab(bquote(S[0]*'(x)')) +
+  scale_color_manual(values = c(red_pink, turquoise,
+                                orange, blue, green,
+                                purple), name = 'Year') + 
+  scale_x_continuous(breaks = seq(0, 100, 10)) + 
+  theme_bw(base_size = 15)
+```
+
+]
+
+.pull-right[
+```{r echo=FALSE}
+xmax  <- 100
+xmin  <- 0
+years <- c(1960, 1970, 1980, 1990, 2000, 2022)
+surv_rate <- matrix(0, xmax-xmin+1, length(years))
+surv_rate[1,] <- 1
+
+for(t in 1:length(years)){
+  for(x in 1:(xmax-xmin)){
+    df.t <- POL_male %>% 
+      dplyr::filter(Year == years[t])
+    px <- 1 - df.t[x,'qx']
+    surv_rate[x+1,t] <- surv_rate[x,t]*px
+  }
+}
+
+df <- data.frame('Age' = rep(0:100, times = length(years)),
+                 'Year' = rep(years, each = length(0:100)),
+                 'Surv' = as.numeric(surv_rate))
+
+ggplot(df, aes(x = Age, y = Surv, 
+               group = Year, colour = as.factor(Year))) + 
+  geom_line(linewidth = 1.1)  + 
+  ggtitle('Polish male survival curve') + 
+  xlab('Age (x)') + ylab(bquote(S[0]*'(x)')) +
+  scale_color_manual(values = c(red_pink, turquoise,
+                                orange, blue, green,
+                                purple), name = 'Year') + 
+  scale_x_continuous(breaks = seq(0,100,10)) + 
+  theme_bw(base_size = 15)
+```
+]
+
+---
+
+class: inverse, center, middle
+name: data
+
+
+# Download and import mortality data
+
+<html><div style='float:left'></div><hr color='#FAFAFA' size=1px width=796px></html>
+
+---
+
+# Download mortality data with {demography} 
+
+.pull-left[
+We do a .hi-pink[live] download from the [Human Mortality Database](https://www.mortality.org) with the {demography} package in R.
+
+To get started with the package, first install it:
+```{r eval = FALSE}
+install.packages("demography")
+```
+
+Then, load the package:
+```{r}
+library(demography)
+```
+
+Next, we use the `hmd.mx` function from {demography} to read the "Mx" (1 x 1) data from the HMD:
+```{r eval=FALSE}
+? hmd.mx
+User = "summerschool.rclr2024@outlook.com"
+pw   = "Test1234."
+Df   = hmd.mx("POL", User , pw , "Poland")
+```
+
+]
+
+.pull-right[
+We specify the country code (`POL`), the user name and password, along with the character string containing the country name from which the data is retrieved. 
+
+To get smooth access to the data, we created a username and password for this workshop. 
+
+We store the downloaded data in the object `Df`.
+
+]
+
+---
+
+# Constructing the mortality data set
+
+.pull-left[
+```{r}
+User = "summerschool.rclr2024@outlook.com"
+pw   = "Test1234."
+Df   = hmd.mx("POL", User , pw , "Poland")
+```
+]
+
+.pull-right[
+Use the `hmd.mx` function from {demography} to read the "Mx" (1 x 1) data from the HMD.
+]
+
+.pull-left[
+```{r}
+years <- 1970:2023
+ages  <- 0:90
+```
+
+]
+
+.pull-right[
+We define a calibration period `years` and an age range `ages` on which we will calibrate the Lee-Carter model.
+]
+
+.pull-left[
+```{r}
+Df <- demography::extract.years(Df, years = years)
+Df <- demography::extract.ages(Df, ages = ages, 
+                     combine.upper = FALSE)
+```
+]
+
+.pull-right[
+We use `extract.years` and `extract.ages` from the {demography} package to subset `Df` according to the specified `years` and `ages`.
+]
+
+.pull-left[
+```{r}
+dim(Df$rate$male)
+dim(Df$pop$female)
+View(Df$rate$female)
+```
+]
+
+.pull-right[
+The death rates are stored in `Df$rate` for males (`$male`) and females (`$female`) and the exposures are contained in `Df$pop`. These statistics are stored in a 91x54 matrix, with in the rows the ages, and in the columns the years in the calibration period.
+]
+
+---
+
+class: clear
+.pull-left[
+The mortality data set `Df` contains the observed central death rates $m_{x,t}$ (`$rates`) for both males (`$male`) and females (`$female`). These rates correspond to the `mx` column in the life tables:
+```{r}
+head(POL_female_2022$mx)
+head(Df$rate$female[,'2022'])
+```
+
+The `$pop` attribute in `Df` stores the exposure-to-risk $E_{x,t}$, representing the total amount of person-years lived by individuals aged $x$ in year $t$.
+
+```{r}
+head(Df$pop$female[,'2022'])
+```
+]
+
+.pull-right[
+Death counts can be calculated by multiplying the death rates with the exposure-to-risk, i.e., $d_{x,t} = E_{x,t} \cdot m_{x,t}$. In R we do: 
+
+```{r}
+round(head(Df$pop$female[,'2022'] * Df$rate$female[,'2022']))
+```
+
+These computed death counts match the death counts from the Human Mortality Database (HMD) (see [here](https://www.mortality.org/File/GetDocument/hmd.v6/POL/STATS/Deaths_1x1.txt)).
+]
+
+---
+
+# What if {demography} does not work?
+
+.pull-left[
+```{r}
+Df <- readRDS(file = "../data/hmd/Df_POL_hmd_mx.rds")
+```
+]
+
+.pull-right[
+Read in the pre-downloaded mortality data set `Df` of Poland using the `readRDS` function.
+]
+
+.pull-left[
+```{r}
+row <- Df$age
+col <- Df$year
+
+Df$pop$female <- Df$pop$female[row <= 90, col >= 1970]
+Df$pop$male   <- Df$pop$male[row <= 90, col >= 1970]
+Df$pop$total  <- Df$pop$total[row <= 90, col >= 1970]
+
+Df$rate$female <- Df$rate$female[row <= 90, col >= 1970]
+Df$rate$male   <- Df$rate$male[row <= 90, col >= 1970]
+Df$rate$total  <- Df$rate$total[row <= 90, col >= 1970]
+```
+]
+
+.pull-right[
+We filter the exposures and death rates, contained in `Df`, according to the specified age range and calibration period. We do this by filtering the rows on ages below 90 (maximum age in `ages`) and years beyond the year 1970 (minimum year in `years`). This is what happens inside the functions `extract.years` and `extract.ages` of the {demography} package.
+]
+
+.pull-left[
+```{r}
+dim(Df$rate$male)
+dim(Df$pop$female)
+View(Df$rate$female)
+```
+
+]
+
+.pull-right[
+The mortality data object `Df` is now in the same structure as in the previous slide.
+]
+
+---
+
+class: inverse, middle, center
+name: POI
+
+
+# Fit single population mortality models by maximizing a Poisson likelihood
+
+<html><div style='float:left'></div><hr color='#FAFAFA' size=1px width=796px></html>
+
+---
+
+# Fitting the Lee-Carter model
+
+.pull-left[
+```{r}
+etx <- t(Df$pop$male)
+dtx <- round(etx * t(Df$rate$male))
+```
+]
+
+.pull-right[
+We extract the male exposures and store these in `etx`. Note the use of the transpose function `t(...)` to make sure the years are now in the rows and the ages in columns (! required by `fit701` function !). <br>
+We extract the male death rates and multiply these with the exposures to obtain the death counts `dtx`.
+ ]
+
+.pull-left[
+```{r results=FALSE}
+source('../scripts/fitModels.R')
+
+LCfit701 <- fit701(ages, years, etx, dtx,
+                   matrix(1, length(years),
+                          length(ages)))
+
+```
+
+The `fit701(.)` function is from the `fitModels.R` script. 
+
+This method is written by Andrew Cairns, see [LifeMetrics software](https://www.macs.hw.ac.uk/~andrewc/lifemetrics/), and uses univariate Newton-Raphson (NR) steps to optimize the log-likelihood.
+
+]
+
+.pull-right[
+As inputs we have the age range (`ages`), the calibration period (`years`), the exposures (`etx`), the death counts (`dtx`), and a matrix of unit weights.
+<br> <br>
+`fit701(.)` calibrates Lee Carter, `fit702(.)` fits the Renshaw Haberman model, `fit703(.)` the Age-Period-Cohort (APC) model, `fit705(.)` the CBD model, `fit706(.)` the CBD model with cohort effect, and so on. 
+]
+
+---
+# Outputs from the fitted Lee-Carter model
+
+.pull-left[
+```{r}
+LCfit701$beta1[1:4]
+LCfit701$beta2[1:4]
+LCfit701$kappa2[1:4]
+```
+
+]
+
+.pull-right[
+The parameter estimates from the fitted Lee-Carter mortality model are retrieved by calling `$beta1` for the $\beta_x^{(1)}$, `$beta2` for the $\beta_x^{(2)}$, and `$kappa2` for the $\kappa_t^{(2)}$. We print the first four estimates.
+]
+
+
+---
+
+class: clear
+
+```{r echo=FALSE, fig.width = 15, fig.height = 8}
+library(ggplot2)
+
+data_period <- tibble(year = years, fit = LCfit701$kappa2)
+data_age <- tibble(age = ages, fit_alpha = LCfit701$beta1, fit_beta = LCfit701$beta2)
+
+g_1 <- ggplot(data_age) + geom_point(aes(age, fit_alpha)) + 
+       geom_line(aes(age, fit_alpha), col = "black") +
+       theme_bw(base_size = 15) +
+       ggtitle("Poland - males, 1970 - 2023, Lee Carter, Poisson") + 
+       labs(y = bquote(hat(beta)[x]^"(1)")) 
+
+g_2 <- ggplot(data_age) + geom_point(aes(age, fit_beta)) + 
+       geom_line(aes(age, fit_beta), col = "black") +
+       theme_bw(base_size = 15) + ggtitle("") +
+       labs(y = bquote(hat(beta)[x]^"(2)")) 
+
+g_3 <- ggplot(data_period) + geom_point(aes(year, fit)) + 
+       geom_line(aes(year, fit), col = "black") +
+       theme_bw(base_size = 15) + ggtitle("") + 
+       labs(y = bquote(hat(kappa)[t]^"(2)")) 
+
+grid.arrange(g_1, g_2, g_3, ncol = 2)
+```
+
+---
+class: clear
+
+.pull-left[
+```{r}
+str(LCfit701$mhat)
+```
+]
+
+.pull-right[
+The `mhat` object contains the fitted force of mortality $\hat{\mu}_{t,x}$ and has dimension names (`dimnames`): the row names are the years in the calibration period and the column names are the ages in the considered age range.
+]
+
+.pull-left[
+```{r}
+LCfit701$mhat['2019','65'] 
+LCfit701$mhat[50,66]
+```
+
+]
+
+.pull-right[
+Using these row and column names, you can easily extract information from `mhat`. E.g., you can retrieve the force of mortality in the year 2019 for age 65 using character notations. Alternatively, you extract the 50th row and the 66th column to obtain $\hat{\mu}_{2019,65}$.
+]
+
+---
+# Outputs from the fitted Lee-Carter model
+
+.pull-left[
+```{r}
+exp(LCfit701$beta1[66] + 
+  LCfit701$beta2[66]*LCfit701$kappa2[50])
+```
+]
+
+.pull-right[
+We can verify the value for $\hat{\mu}_{2019,65}$, by calculating it manually using the formula:
+\begin{align*}
+\hat{\mu}_{2019,65} = \exp\left(\hat{\beta}_{65}^{(1)} + \hat{\beta}_{65}^{(2)} \cdot \hat{\kappa}_{2019}^{(2)}\right).
+\end{align*}
+]
+
+.pull-left[
+```{r}
+qhat <- 1 - exp(-LCfit701$mhat)
+qhat['2019','65']
+```
+]
+
+.pull-right[
+From the fitted forces of mortality, we can then calculate the mortality rates using the relation:
+\begin{align*}
+\hat{q}_{t,x} = 1 - \exp(-\hat{\mu}_{t,x}).
+\end{align*}
+As an example, the estimated mortality rate in the year 2019 for age 65 can be extracted in a similar way.
+]
+
+.pull-left[
+```{r eval=FALSE}
+ggplot(...) + 
+  ...
+```
+
+]
+
+.pull-right[
+We can plot parameter estimates, estimated forces of mortality, mortality rates, survival probabilities,... using {ggplot} instructions.
+]
+
+---
+
+class: clear
+
+.pull-left[
+We compute the observed and estimated mortality rates from the `LCfit701` object:
+```{r}
+qobs <- 1 - exp(-dtx/etx)
+qhat <- 1 - exp(-LCfit701$mhat)
+```
+
+We construct a data frame that stores the observed and estimated mortality rates at age 65:
+```{r eval=FALSE}
+age    <- `'65'`
+df.age <- data.frame(Year = years, obs = qobs[,age],
+                     fit = qhat[,age])
+```
+
+```{r echo=FALSE}
+age    <- '65'
+df.age <- data.frame(Year = years, obs = qobs[,age],
+                     fit = qhat[,age])
+```
+
+We visualize these using {ggplot}.
+```{r eval=FALSE}
+ggplot(df.age) + 
+  geom_point(aes(x = Year, y = obs)) +
+  geom_line(aes(Year, fit), col = RCLRbg, 
+            linewidth = 1) +
+  ggtitle("Poland - males, 1970 - 2023") + 
+  ylab(bquote(hat(q)['t,`65`'])) + 
+  theme_bw(base_size = 15)
+```
+]
+
+.pull-right[
+<br>
+
+```{r echo=FALSE, fig.width=5, fig.height=5}
+ggplot(df.age) + 
+  geom_point(aes(x = Year, y = obs)) +
+  geom_line(aes(Year, fit), col = RCLRbg, linewidth = 1) +
+  ggtitle("Poland - males, 1970 - 2023") + 
+  ylab(bquote(hat(q)['t,65'])) + 
+  theme_bw(base_size = 15)
+```
+]
+
+
+---
+
+class: clear
+
+
+.pull-left[
+We compute the observed and estimated mortality rates from the `LCfit701` object:
+```{r}
+qobs <- 1 - exp(-dtx/etx)
+qhat <- 1 - exp(-LCfit701$mhat)
+```
+
+We construct a data frame that stores the observed and estimated mortality rates at age 85:
+```{r eval=FALSE}
+age    <- `'85'`
+df.age <- data.frame(Year = years, obs = qobs[,age],
+                     fit = qhat[,age])
+```
+
+```{r echo=FALSE}
+age    <- '85'
+df.age <- data.frame(Year = years, obs = qobs[,age],
+                     fit = qhat[,age])
+```
+
+We visualize these using {ggplot}.
+```{r eval=FALSE}
+ggplot(df.age) + 
+  geom_point(aes(x = Year, y = obs)) +
+  geom_line(aes(Year, fit), col = RCLRbg, 
+            linewidth = 1) +
+  ggtitle("Poland - males, 1970 - 2023") + 
+  ylab(bquote(hat(q)['t,`85`'])) + 
+  theme_bw(base_size = 15)
+```
+]
+
+.pull-right[
+<br>
+
+```{r echo=FALSE, fig.width=5, fig.height=5}
+ggplot(df.age) + 
+  geom_point(aes(x = Year, y = obs)) +
+  geom_line(aes(Year, fit), col = RCLRbg, linewidth = 1) +
+  ggtitle("Poland - males, 1970 - 2023") + 
+  ylab(bquote(hat(q)['t,85'])) + 
+  theme_bw(base_size = 15)
+```
+]
+
+---
+
+class: inverse, middle, center
+name: modelfit
+
+
+# Model selection and goodness-of-fit 
+
+<html><div style='float:left'></div><hr color='#FAFAFA' size=1px width=796px></html>
+
+---
+
+# Model selection
+
+Various mortality model specifications have been proposed in the literature.
+
+How to select an appropriate mortality model? Here are a few tools.
+
+- .hi-pink[Goodness-of-Fit]: The model should accurately fit the historical, observed data. This can be evaluated using Pearson residuals:
+\begin{align*}
+\epsilon_{x,t} = \frac{d_{x,t}-\hat{\mu}_{x,t} \cdot E_{x,t}}{\sqrt{\hat{\mu}_{x,t} \cdot E_{x,t}}}.
+\end{align*}
+
+- .hi-pink[Predictive Performance]: The model should perform well on both in-sample statistical measures as well as out-of-time back-tests.
+
+- .hi-pink[Parsimony]: The model should have a good balance between complexity and goodness-of-fit. Compare the AIC/BIC values of different calibrated models to assess this balance.
+
+- .hi-pink[Reasonable]: The chosen model should lead to mortality rates (and their evolutions) that are biologically and demographically reasonable.
+
+- ...
+
+
+---
+# Pearson residuals
+
+.pull-left[
+
+We construct a {ggplot2} heatmap of the residuals produced by `fit701(.)`.
+
+```{r eval = FALSE}
+grid <- expand.grid(period = years, age = ages)
+grid$res <- as.vector(LCfit701$epsilon)
+names(grid) <- c("Year", "Age", "Residual")
+
+ggplot(grid, aes(x = Year, y = Age)) + 
+  geom_tile(aes(fill = Residual)) +
+  scale_fill_gradientn(colours = topo.colors(7), 
+                       breaks = c(-4,-2,0,2,4,6)) +
+  theme_bw(base_size = 15) + 
+  theme(legend.position = "bottom")
+```
+
+```{r echo = FALSE}
+grid <- expand.grid(period = years, age = ages)
+grid$res <- as.vector(LCfit701$epsilon)
+names(grid) <- c("Year", "Age", "Residual")
+```
+
+```{r}
+head(grid)[1:3,]
+```
+
+
+]
+
+.pull-right[
+
+```{r echo = FALSE}
+grid <- expand.grid(period = years, age = ages)
+grid$res <- as.vector(LCfit701$epsilon)
+names(grid) <- c("Year", "Age", "Residual")
+
+ggplot(grid, aes(x = Year, y = Age)) +
+  geom_tile(aes(fill = Residual)) +
+  scale_fill_gradientn(colours = topo.colors(7), breaks = c(-4,-2,0,2,4,6)) +
+  theme_bw(base_size = 15) + 
+  theme(legend.position = "bottom")
+```
+]
+
+---
+
+class: clear
+
+.pull-left[
+
+Diagonal patterns in heatmaps of residuals might hint to the inclusion of a cohort effect in a stochastic mortality model. 
+
+For a more in depth discussion of .hi-pink[cohort effects], we refer to Cairns et al. (2009) on [A quantitative comparison of stochastic mortality models using data from England and Wales and the United States](http://www.macs.hw.ac.uk/~andrewc/papers/naaj2009.pdf).
+
+In the longer version of this paper (available [online](http://www.macs.hw.ac.uk/~andrewc/papers/ajgc50.pdf)) the authors discuss the plot shown on the right (Figure 3 on page 7). 
+
+This is often used as the rationale for including cohort effects in mortality forecasting models. 
+
+However, calibrating and forecasting such cohort effects typically comes with a lot of difficulties!
+
+]
+
+.pull-right[
+
+.center[
+```{r out.width = '100%', echo=FALSE}
+knitr::include_graphics("img/cohort_effect_Cairns.png")
+```
+]
+
+This Figure shows .hi-pink[improvement rates] in mortality for England & Wales by calendar year and age relative to mortality rates at the same age in the previous year. Red cells
+imply that mortality is deteriorating; green small rates of improvement, and blue
+and white strong rates of improvement. 
+
+The black diagonal line follows the .hi-pink[progress of the 1930 cohort].
+
+
+]
+
+---
+
+# Thanks!   <img src="img/xaringan.png" class="title-hex" width="50" height="50" align="right">
+
+<br>
+<br>
+<br>
+<br>
+
+Slides created with the R package [xaringan](https://github.com/yihui/xaringan).
+<br> <br> <br>
+Course material available via 
+<br>
+
+<img align="left" src="img/gitfront.png" width="35" hspace="10"/> 
+https://github.com/katrienantonio/warsaw-2025
+
+```{css, echo=FALSE}
+.pull-right ~ * { clear: unset; }
+.pull-right + * { clear: both; }
+```
+
+```{css, echo=FALSE}
+.inverse .remark-slide-number {
+  display: none;
+}
+```
+
+```{r eval=FALSE, echo=FALSE}
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+knitr::purl("Recap-Tutorial-1-Warsaw.Rmd")
+```
+
+
